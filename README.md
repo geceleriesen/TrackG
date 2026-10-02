@@ -1,16 +1,38 @@
-# React + Vite
+# TrackG
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Telefonun GPS'ini kullanarak canlı konum, hız, mesafe ve süre takibi yapan,
+React + Vite ile yazılmış ve Capacitor ile Android uygulamasına dönüştürülen bir projedir.
 
-Currently, two official plugins are available:
+> **Durum:** geliştirme aşamasında. Şu an sadece **CANLI İZ** ekranı çalışıyor.
+> HEDEF, İSTATİSTİK, HARİTA sekmeleri, dil seçimi ve KİLİTLE butonu henüz yapılmadı.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Özellikler
 
-## React Compiler
+- Canlı GPS takibi (hız, mesafe, süre, rakım, yön)
+- OpenStreetMap üzerinde canlı rota çizimi (Leaflet)
+- Başlat / Duraklat / Durdur
+- Zayıf GPS sinyalini (±30 m'den kötü) ve küçük titremeleri (5 m altı) yok sayar
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Kurulum
 
-## Expanding the Oxlint configuration
+```bash
+npm install
+npm run dev      # tarayıcıda dene
+npm run build    # üretim derlemesi (dist/)
+npm run lint
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Android
+
+```bash
+npm run build
+npx cap sync android
+npx cap open android   # Android Studio'yu açar
+```
+
+## Bilinen eksikler
+
+- Uygulama arka plana gidince / ekran kapanınca takip durabilir (arka plan servisi yok).
+- Rota kayıt edilmiyor; uygulama kapanınca kaybolur.
+- Haritalar OpenStreetMap'in ücretsiz sunucusundan geliyor. Yoğun veya ticari kullanım için
+  kendi/ücretli bir harita sağlayıcısına geçilmelidir.
