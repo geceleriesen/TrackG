@@ -1,7 +1,8 @@
 {
   "appId": "com.trackg.app",
-  "appName": "trackG",
+  "appName": "TrackG",
   "webDir": "dist",
+  "backgroundColor": "#050505",
   "android": {
     "useLegacyBridge": true
   }

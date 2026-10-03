@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets / signing keys (never commit)
+.env
+.env.*
+*.jks
+*.keystore
+local.properties
+*.apk
+*.aab
