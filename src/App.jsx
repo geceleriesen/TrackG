@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
+import { calculateDistance, toCardinal, formatTime, startWatch } from './geo.js';
+import { CachedTiles } from './tiles.js';
+import Goal from './Goal.jsx';
+import Records from './Records.jsx';
 
 // GPS "±X metre şaşabilirim" derse ve X bundan büyükse o okumayı yok sayarız
 const MAX_ACCURACY_M = 30;
@@ -10,8 +14,8 @@ const MAX_ACCURACY_M = 30;
 const MIN_MOVE_M = 5;
 
 const TEXT = {
-  tr: { live: '📍 CANLI İZ', goal: '🎯 HEDEF', stats: '📊 İSTATİSTİK', map: '🗺️ HARİTA', speed: 'HIZ', dist: 'YOL', time: 'SÜRE', alt: 'RAKIM', avg: 'ORT', temp: 'ISI', hold: 'BASILI TUT', max: 'MAKS', compass: 'PUSULA', here: 'Anlık Konumunuz', state: 'DURUM', start: '▶ BAŞLAT', pause: '⏸ PAUSE', resume: '▶ DEVAM', stop: '⏹ STOP', lock: '🔒 KİLİTLE', soon: 'Yakında', offline: 'İNTERNET YOK: KAYIT MODU', viewMap: 'HARİTA', viewTrail: 'VEKTÖR', offlineSub: 'Harita kapalı, iz çiziliyor ve kayıt devam ediyor', toStart: 'BAŞLANGICA', noTrack: 'İz, BAŞLAT\'a basınca burada çizilir', noGps: 'Cihazınızda GPS desteği bulunamadı!', none: 'Henüz kayıt yok. BAŞLAT ile bir kayıt yapıp STOP\'a bas.', del: 'Sil', recs: 'KAYITLAR', tracking: 'RECORDING', paused: 'PAUSED', stopped: 'STOPPED' },
-  en: { live: '📍 LIVE', goal: '🎯 GOAL', stats: '📊 STATS', map: '🗺️ MAP', speed: 'SPEED', dist: 'DIST', time: 'TIME', alt: 'ALT', avg: 'AVG', temp: 'TEMP', hold: 'HOLD', max: 'MAX', compass: 'COMPASS', here: 'Your location', state: 'STATE', start: '▶ START', pause: '⏸ PAUSE', resume: '▶ RESUME', stop: '⏹ STOP', lock: '🔒 LOCK', soon: 'Coming soon', offline: 'NO INTERNET: RECORDER MODE', viewMap: 'MAP', viewTrail: 'VECTOR', offlineSub: 'Map is off, drawing your trail and recording', toStart: 'TO START', noTrack: 'Your trail appears here after START', noGps: 'GPS is not supported on this device!', none: 'No recordings yet. Press START, then STOP to save one.', del: 'Delete', recs: 'RECORDINGS', tracking: 'RECORDING', paused: 'PAUSED', stopped: 'STOPPED' },
+  tr: { live: '📍 CANLI İZ', goal: '🎯 HEDEF', stats: '📊 İSTATİSTİK', map: '🗺️ HARİTA', speed: 'HIZ', dist: 'YOL', time: 'SÜRE', alt: 'RAKIM', avg: 'ORT', temp: 'ISI', hold: 'BASILI TUT', max: 'MAKS', compass: 'PUSULA', here: 'Anlık Konumunuz', state: 'DURUM', start: '▶ BAŞLAT', pause: '⏸ PAUSE', resume: '▶ DEVAM', stop: '⏹ STOP', lock: '🔒 KİLİTLE', soon: 'Yakında', offline: 'İNTERNET YOK: KAYIT MODU', viewMap: 'HARİTA', viewTrail: 'VEKTÖR', offlineSub: 'Harita kapalı, iz çiziliyor ve kayıt devam ediyor', toStart: 'BAŞLANGICA', toTarget: 'HEDEFE', bg: { title: 'TrackG kayıt yapıyor', message: "Durdurmak için uygulamaya dön ve STOP'a bas", permission: 'Konum izni gerekli. Ayarlar açılsın mı?' }, noTrack: 'İz, BAŞLAT\'a basınca burada çizilir', noGps: 'Cihazınızda GPS desteği bulunamadı!', none: 'Henüz kayıt yok. BAŞLAT ile bir kayıt yapıp STOP\'a bas.', del: 'Sil', recs: 'KAYITLAR', tracking: 'RECORDING', paused: 'PAUSED', stopped: 'STOPPED' },
+  en: { live: '📍 LIVE', goal: '🎯 GOAL', stats: '📊 STATS', map: '🗺️ MAP', speed: 'SPEED', dist: 'DIST', time: 'TIME', alt: 'ALT', avg: 'AVG', temp: 'TEMP', hold: 'HOLD', max: 'MAX', compass: 'COMPASS', here: 'Your location', state: 'STATE', start: '▶ START', pause: '⏸ PAUSE', resume: '▶ RESUME', stop: '⏹ STOP', lock: '🔒 LOCK', soon: 'Coming soon', offline: 'NO INTERNET: RECORDER MODE', viewMap: 'MAP', viewTrail: 'VECTOR', offlineSub: 'Map is off, drawing your trail and recording', toStart: 'TO START', toTarget: 'TO TARGET', bg: { title: 'TrackG is recording', message: 'Open the app and press STOP to finish', permission: 'Location permission is required. Open settings?' }, noTrack: 'Your trail appears here after START', noGps: 'GPS is not supported on this device!', none: 'No recordings yet. Press START, then STOP to save one.', del: 'Delete', recs: 'RECORDINGS', tracking: 'RECORDING', paused: 'PAUSED', stopped: 'STOPPED' },
 };
 
 function load(key, fallback) {
@@ -23,42 +27,14 @@ function save(key, value) {
 // Ortalama hız (km/h) = toplam km / toplam saat
 const avgSpeed = (km, sec) => (sec > 0 ? km / (sec / 3600) : 0);
 
-// Mesafe Hesaplama (Haversine Formülü - Metre cinsinden)
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371e3; // Dünya yarıçapı (metre)
-  const φ1 = (lat1 * Math.PI) / 180;
-  const φ2 = (lat2 * Math.PI) / 180;
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-  const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c;
-}
-
-// Derece -> yön kısaltması (ör. 245 -> SW)
-function toCardinal(deg) {
-  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-  return dirs[Math.round(deg / 45) % 8];
-}
-
-function formatTime(totalSeconds) {
-  const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-  const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-  const secs = String(totalSeconds % 60).padStart(2, '0');
-  return `${hrs}:${mins}:${secs}`;
-}
-
-// İnternet yokken: siyah zemin üzerinde yürünen izi çizer (kuzey hep yukarı)
-function OfflineTrack({ path, position, t }) {
+// Vektör görünümü: siyah zemin üzerinde yürünen izi çizer (kuzey hep yukarı)
+function OfflineTrack({ path, position, target, t }) {
   const k = Math.cos((position[0] * Math.PI) / 180);
   // Metre cinsinden düz koordinat: x = doğu, y = kuzey (şu anki konum merkez)
   const toXY = (p) => [(p[1] - position[1]) * 111320 * k, (p[0] - position[0]) * 110540];
   const pts = path.map(toXY);
-  const all = [...pts, [0, 0]];
+  const dest = target ? toXY([target.lat, target.lon]) : null;
+  const all = [...pts, [0, 0], ...(dest ? [dest] : [])];
   const xs = all.map((a) => a[0]);
   const ys = all.map((a) => a[1]);
   const minX = Math.min(...xs), maxX = Math.max(...xs);
@@ -72,7 +48,8 @@ function OfflineTrack({ path, position, t }) {
   const steps = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
   const bar = [...steps].reverse().find((n) => n <= span / 2.5) || 10;
   const start = pts[0];
-  const toStartM = start ? Math.round(Math.hypot(start[0], start[1])) : null;
+  const goal = dest || start; // kesikli çizgi hedefe (yoksa başlangıca) gider
+  const goalM = goal ? Math.round(Math.hypot(goal[0], goal[1])) : null;
 
   return (
     <>
@@ -81,12 +58,9 @@ function OfflineTrack({ path, position, t }) {
           <polyline fill="none" stroke="#00ff66" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round"
             points={pts.map((a) => `${sx(a[0])},${sy(a[1])}`).join(' ')} />
         )}
-        {start && (
-          <>
-            <line x1={sx(0)} y1={sy(0)} x2={sx(start[0])} y2={sy(start[1])} stroke="#fb923c" strokeWidth="1.5" strokeDasharray="4 4" />
-            <rect x={sx(start[0]) - 5} y={sy(start[1]) - 5} width="10" height="10" fill="#fff" />
-          </>
-        )}
+        {goal && <line x1={sx(0)} y1={sy(0)} x2={sx(goal[0])} y2={sy(goal[1])} stroke="#fb923c" strokeWidth="1.5" strokeDasharray="4 4" />}
+        {start && <rect x={sx(start[0]) - 5} y={sy(start[1]) - 5} width="10" height="10" fill="#fff" />}
+        {dest && <path d={`M${sx(dest[0])} ${sy(dest[1]) - 9} l9 9 l-9 9 l-9 -9 z`} fill="#fb923c" stroke="#fff" strokeWidth="2" />}
         <circle cx={sx(0)} cy={sy(0)} r="8" fill="#00ff66" stroke="#fff" strokeWidth="2" />
         <text x="22" y="24" fill="#fff" fontSize="14" fontWeight="700" textAnchor="middle">N</text>
         <path d="M22 30 l-6 14 h12 z" fill="#fff" />
@@ -94,8 +68,8 @@ function OfflineTrack({ path, position, t }) {
         <text x="16" y={W - 22} fill="#8b95a5" fontSize="11">{bar >= 1000 ? `${bar / 1000} km` : `${bar} m`}</text>
       </svg>
       <div className="track-info">
-        {start ? (
-          <span>{t.toStart}<b>{toStartM >= 1000 ? `${(toStartM / 1000).toFixed(2)} km` : `${toStartM} m`}</b></span>
+        {goal ? (
+          <span>{dest ? t.toTarget : t.toStart}<b>{goalM >= 1000 ? `${(goalM / 1000).toFixed(2)} km` : `${goalM} m`}</b></span>
         ) : (
           <span>{t.noTrack}</span>
         )}
@@ -130,6 +104,14 @@ const liveLocationIcon = new L.DivIcon({
   iconAnchor: [10, 10]
 });
 
+// Hedef noktası: turuncu elmas
+const targetIcon = new L.DivIcon({
+  className: 'custom-live-icon',
+  html: '<div style="width:16px;height:16px;background:#fb923c;border:2px solid #fff;transform:rotate(45deg)"></div>',
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
 export default function App() {
   const [isTracking, setIsTracking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -144,11 +126,21 @@ export default function App() {
   const [batteryLevel, setBatteryLevel] = useState(null);
 
   const [tab, setTab] = useState('live');
-  const [view, setView] = useState('map'); // internet varken: 'map' (harita) veya 'trail' (iz)
+  const [view, setView] = useState(navigator.onLine ? 'map' : 'trail'); // internet varken: 'map' (harita) veya 'trail' (iz)
   const [lang, setLang] = useState(() => load('trackg-lang', 'tr'));
   const [online, setOnline] = useState(navigator.onLine);
   const [records, setRecords] = useState(() => load('trackg-records', []));
   const [temp, setTemp] = useState(null);
+  const [target, setTargetState] = useState(() => load('trackg-target', null));
+  const [goalKm, setGoalKmState] = useState(() => load('trackg-goalkm', null));
+  const setTarget = (v) => { setTargetState(v); save('trackg-target', v); };
+  const setGoalKm = (v) => { setGoalKmState(v); save('trackg-goalkm', v); };
+
+  // Süre saatten hesaplanır: ekran kapalıyken zamanlayıcı yavaşlasa bile doğru kalır
+  const startedAtRef = useRef(null);
+  const segStartRef = useRef(null);
+  const accumMsRef = useRef(0);
+  const elapsedSec = () => Math.floor((accumMsRef.current + (segStartRef.current ? Date.now() - segStartRef.current : 0)) / 1000);
   const [locked, setLocked] = useState(false);
   const holdRef = useRef(null);
   const t = TEXT[lang];
@@ -162,8 +154,8 @@ export default function App() {
 
   // İnternet var/yok takibi
   useEffect(() => {
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
+    const on = () => { setOnline(true); setView('map'); };
+    const off = () => { setOnline(false); setView('trail'); };
     window.addEventListener('online', on);
     window.addEventListener('offline', off);
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
@@ -208,18 +200,20 @@ export default function App() {
     };
   }, []);
 
-  // Kronometre Süre Sayacı
+  // Kronometre: her saniye (ve uygulama öne gelince) saatten yeniden hesaplanır
   useEffect(() => {
     if (!isTracking || isPaused) return;
-    const id = setInterval(() => setSeconds((prev) => prev + 1), 1000);
-    return () => clearInterval(id);
+    const tick = () => setSeconds(elapsedSec());
+    const id = setInterval(tick, 1000);
+    document.addEventListener('visibilitychange', tick);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', tick); };
   }, [isTracking, isPaused]);
 
   // Uygulama kapanırken GPS dinlemeyi bırak
   useEffect(() => {
     return () => {
       if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current();
       }
     };
   }, []);
@@ -244,8 +238,8 @@ export default function App() {
     setPosition(newPos);
     setGpsStatus(`REAL (±${Math.round(accuracy)}m)`);
 
-    if (gpsAltitude !== null) setAltitude(Math.round(gpsAltitude));
-    if (gpsHeading !== null && !Number.isNaN(gpsHeading)) setHeading(Math.round(gpsHeading));
+    if (gpsAltitude != null) setAltitude(Math.round(gpsAltitude));
+    if (gpsHeading != null && !Number.isNaN(gpsHeading)) setHeading(Math.round(gpsHeading));
 
     // m/s -> km/h çevirisi
     const kmh = gpsSpeed ? Math.round(gpsSpeed * 3.6) : 0;
@@ -270,7 +264,7 @@ export default function App() {
     lastPosRef.current = newPos;
   };
 
-  const startTracking = () => {
+  const startTracking = async () => {
     if (!('geolocation' in navigator)) {
       alert(t.noGps);
       return;
@@ -284,28 +278,39 @@ export default function App() {
     lastPosRef.current = null;
     maxSpeedRef.current = 0;
     isPausedRef.current = false;
+    accumMsRef.current = 0;
+    segStartRef.current = Date.now();
+    startedAtRef.current = Date.now();
 
     setIsTracking(true);
     setIsPaused(false);
     setGpsStatus('CONNECTING...');
 
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      handlePosition,
-      (err) => {
-        console.error('GPS Error:', err);
-        setGpsStatus(err.code === 1 ? 'PERMISSION DENIED' : 'SEARCHING GPS...');
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 10000,
-      }
-    );
+    try {
+      watchIdRef.current = await startWatch(
+        handlePosition,
+        (err) => {
+          console.error('GPS Error:', err);
+          setGpsStatus(err.code === 1 ? 'PERMISSION DENIED' : 'SEARCHING GPS...');
+        },
+        t.bg
+      );
+    } catch (e) {
+      console.error(e);
+      setGpsStatus('GPS ERROR');
+    }
   };
 
   const pauseTracking = () => {
     const next = !isPaused;
     isPausedRef.current = next;
+    if (next) {
+      accumMsRef.current += Date.now() - segStartRef.current;
+      segStartRef.current = null;
+      setSeconds(elapsedSec());
+    } else {
+      segStartRef.current = Date.now();
+    }
     setIsPaused(next);
     // Duraklatma sırasında yürünen yol mesafeye eklenmesin
     lastPosRef.current = null;
@@ -314,9 +319,15 @@ export default function App() {
 
   const stopTracking = () => {
     if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current();
       watchIdRef.current = null;
     }
+    if (segStartRef.current) {
+      accumMsRef.current += Date.now() - segStartRef.current;
+      segStartRef.current = null;
+    }
+    const finalSec = Math.floor(accumMsRef.current / 1000);
+    setSeconds(finalSec);
     isPausedRef.current = false;
     setIsTracking(false);
     setIsPaused(false);
@@ -324,8 +335,8 @@ export default function App() {
     setSpeed(0);
     lastPosRef.current = null;
     // Anlamlı bir kayıtsa (en az 10 m) kaydet
-    if (distance >= 0.01) {
-      const next = [{ id: Date.now(), date: new Date().toISOString(), distance, seconds, maxSpeed: maxSpeedRef.current, path }, ...records];
+    if (distance > 0 || finalSec >= 20) {
+      const next = [{ id: Date.now(), date: new Date().toISOString(), startedAt: startedAtRef.current, distance, seconds: finalSec, maxSpeed: maxSpeedRef.current, path }, ...records];
       setRecords(next);
       save('trackg-records', next);
     }
@@ -335,6 +346,12 @@ export default function App() {
 
   const deleteRecord = (id) => {
     const next = records.filter((r) => r.id !== id);
+    setRecords(next);
+    save('trackg-records', next);
+  };
+
+  const renameRecord = (id, name) => {
+    const next = records.map((r) => (r.id === id ? { ...r, name: name || undefined } : r));
     setRecords(next);
     save('trackg-records', next);
   };
@@ -350,11 +367,11 @@ export default function App() {
 
       <div className="nav-tabs">
         <button className={`tab ${tab === 'live' ? 'active' : ''}`} onClick={() => setTab('live')} disabled={locked}>{t.live}</button>
-        <button className="tab" disabled title={t.soon}>{t.goal}</button>
+        <button className={`tab ${tab === 'goal' ? 'active' : ''}`} onClick={() => setTab('goal')} disabled={locked}>{t.goal}</button>
         <button className={`tab ${tab === 'stats' ? 'active' : ''}`} onClick={() => setTab('stats')} disabled={locked}>{t.stats}</button>
-        <button className={`tab toggle ${tab === 'stats' ? '' : 'on'}`} disabled={locked || !online}
+        <button className={`tab toggle ${tab === 'stats' ? '' : 'on'}`} disabled={locked}
           onClick={() => { setTab('live'); setView(view === 'map' ? 'trail' : 'map'); }}>
-          {online && view === 'map' ? `🗺️ ${t.viewMap}` : `⬛ ${t.viewTrail}`}
+          {view === 'map' ? `🗺️ ${t.viewMap}` : `⬛ ${t.viewTrail}`}
         </button>
       </div>
 
@@ -372,34 +389,32 @@ export default function App() {
           <span className="metric-value orange">{temp === null ? '—' : `${temp}°C`}</span></div>
       </div>
 
+      {goalKm && tab === 'live' && (
+        <div className="goal-bar">
+          <i style={{ width: `${Math.min(100, (distance / goalKm) * 100)}%` }} />
+          <span>{distance.toFixed(2)} / {goalKm} km</span>
+        </div>
+      )}
+
       <div className="map-wrapper">
         {tab === 'stats' ? (
-          <div className="stats-view">
-            <h2>{t.recs}</h2>
-            {records.length === 0 && <p className="empty">{t.none}</p>}
-            {records.map((r) => (
-              <div className="record" key={r.id}>
-                <div className="record-date">{new Date(r.date).toLocaleString(lang === 'tr' ? 'tr-TR' : 'en-GB')}</div>
-                <div className="record-grid">
-                  <span>{t.dist}<b>{r.distance.toFixed(2)} km</b></span>
-                  <span>{t.time}<b>{formatTime(r.seconds)}</b></span>
-                  <span>{t.avg}<b>{avgSpeed(r.distance, r.seconds).toFixed(1)} km/h</b></span>
-                  <span>{t.max}<b>{r.maxSpeed} km/h</b></span>
-                </div>
-                <button className="del-btn" onClick={() => deleteRecord(r.id)}>{t.del}</button>
-              </div>
-            ))}
-          </div>
-        ) : online && view === 'map' ? (
+          <Records lang={lang} records={records} onDelete={deleteRecord} onRename={renameRecord} />
+        ) : tab === 'goal' ? (
+          <Goal lang={lang} live={isTracking} position={position} heading={heading} distance={distance}
+            start={path[0] || null} target={target} setTarget={setTarget} goalKm={goalKm} setGoalKm={setGoalKm} />
+        ) : view === 'map' ? (
           <>
             <MapContainer center={position} zoom={16} scrollWheelZoom={true} className="leaflet-map">
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
+              <CachedTiles />
               <RecenterMap position={position} />
               <Marker position={position} icon={liveLocationIcon}><Popup>{t.here}</Popup></Marker>
               <Polyline positions={path} color="#00ff66" weight={5} />
+              {target && (
+                <>
+                  <Marker position={[target.lat, target.lon]} icon={targetIcon}><Popup>{t.toTarget}</Popup></Marker>
+                  <Polyline positions={[position, [target.lat, target.lon]]} color="#fb923c" weight={2} dashArray="6 8" />
+                </>
+              )}
             </MapContainer>
           </>
         ) : (
@@ -410,10 +425,10 @@ export default function App() {
                 <div className="offline-sub">{t.offlineSub}</div>
               </>
             )}
-            <OfflineTrack path={path} position={position} t={t} />
+            <OfflineTrack path={path} position={position} target={target} t={t} />
           </div>
         )}
-        {tab !== 'stats' && (
+        {tab === 'live' && (
           <div className="compass-badge">
             {t.compass}<br />
             <strong>{heading === null ? '—' : `( N ) ${heading}° ${toCardinal(heading)}`}</strong>
