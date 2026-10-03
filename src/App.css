@@ -121,3 +121,9 @@ button:disabled { opacity: 0.4; }
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 8px; margin: 12px 0 4px; }
 .detail-grid span { display: flex; flex-direction: column; font-size: 9px; letter-spacing: 1px; color: var(--muted); gap: 3px; }
 .detail-grid b { font-size: 13px; color: #fff; letter-spacing: 0; }
+
+/* GERİ DÖN */
+.back-chip { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(20, 20, 20, 0.92); border: 1px solid var(--orange); color: var(--orange); border-radius: 999px; padding: 7px 14px; font-family: var(--mono); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.back-chip.on { background: var(--orange); color: #000; }
+.track-info b.warn { color: var(--red); }
+.track-info .arrived { color: var(--green); font-size: 14px; font-weight: 700; margin: 8px 0; }

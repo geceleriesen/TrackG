@@ -59,6 +59,7 @@ export function CachedTiles() {
       });
       return tile;
     };
+    map.attributionControl?.setPrefix(false); // Leaflet logosu gizlenir, OpenStreetMap atfı kalır
     layer.addTo(map);
     return () => { layer.remove(); };
   }, [map]);

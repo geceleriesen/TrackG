@@ -14,8 +14,8 @@ const MAX_ACCURACY_M = 30;
 const MIN_MOVE_M = 5;
 
 const TEXT = {
-  tr: { live: '📍 CANLI İZ', goal: '🎯 HEDEF', stats: '📊 İSTATİSTİK', map: '🗺️ HARİTA', speed: 'HIZ', dist: 'YOL', time: 'SÜRE', alt: 'RAKIM', avg: 'ORT', temp: 'ISI', hold: 'BASILI TUT', max: 'MAKS', compass: 'PUSULA', here: 'Anlık Konumunuz', state: 'DURUM', start: '▶ BAŞLAT', pause: '⏸ PAUSE', resume: '▶ DEVAM', stop: '⏹ STOP', lock: '🔒 KİLİTLE', soon: 'Yakında', offline: 'İNTERNET YOK: KAYIT MODU', viewMap: 'HARİTA', viewTrail: 'VEKTÖR', offlineSub: 'Harita kapalı, iz çiziliyor ve kayıt devam ediyor', toStart: 'BAŞLANGICA', toTarget: 'HEDEFE', bg: { title: 'TrackG kayıt yapıyor', message: "Durdurmak için uygulamaya dön ve STOP'a bas", permission: 'Konum izni gerekli. Ayarlar açılsın mı?' }, noTrack: 'İz, BAŞLAT\'a basınca burada çizilir', noGps: 'Cihazınızda GPS desteği bulunamadı!', none: 'Henüz kayıt yok. BAŞLAT ile bir kayıt yapıp STOP\'a bas.', del: 'Sil', recs: 'KAYITLAR', tracking: 'RECORDING', paused: 'PAUSED', stopped: 'STOPPED' },
-  en: { live: '📍 LIVE', goal: '🎯 GOAL', stats: '📊 STATS', map: '🗺️ MAP', speed: 'SPEED', dist: 'DIST', time: 'TIME', alt: 'ALT', avg: 'AVG', temp: 'TEMP', hold: 'HOLD', max: 'MAX', compass: 'COMPASS', here: 'Your location', state: 'STATE', start: '▶ START', pause: '⏸ PAUSE', resume: '▶ RESUME', stop: '⏹ STOP', lock: '🔒 LOCK', soon: 'Coming soon', offline: 'NO INTERNET: RECORDER MODE', viewMap: 'MAP', viewTrail: 'VECTOR', offlineSub: 'Map is off, drawing your trail and recording', toStart: 'TO START', toTarget: 'TO TARGET', bg: { title: 'TrackG is recording', message: 'Open the app and press STOP to finish', permission: 'Location permission is required. Open settings?' }, noTrack: 'Your trail appears here after START', noGps: 'GPS is not supported on this device!', none: 'No recordings yet. Press START, then STOP to save one.', del: 'Delete', recs: 'RECORDINGS', tracking: 'RECORDING', paused: 'PAUSED', stopped: 'STOPPED' },
+  tr: { live: '📍 CANLI İZ', goal: '🎯 HEDEF', stats: '📊 İSTATİSTİK', map: '🗺️ HARİTA', speed: 'HIZ', dist: 'YOL', time: 'SÜRE', alt: 'RAKIM', avg: 'ORT', temp: 'ISI', hold: 'BASILI TUT', max: 'MAKS', compass: 'PUSULA', here: 'Anlık Konumunuz', state: 'DURUM', start: '▶ BAŞLAT', pause: '⏸ PAUSE', resume: '▶ DEVAM', stop: '⏹ STOP', lock: '🔒 KİLİTLE', soon: 'Yakında', offline: 'İNTERNET YOK: KAYIT MODU', viewMap: 'HARİTA', viewTrail: 'VEKTÖR', offlineSub: 'Harita kapalı, iz çiziliyor ve kayıt devam ediyor', toStart: 'BAŞLANGICA', toTarget: 'HEDEFE', backOn: '↩ GERİ DÖN', backOff: '✕ GERİ DÖNÜŞÜ KAPAT', backLeft: 'İZ ÜZERİNDEN', offTrail: 'İZDEN SAPMA', dir: 'YÖN', arrived: '🏁 BAŞLANGIÇ NOKTASINDASIN', bg: { title: 'TrackG kayıt yapıyor', message: "Durdurmak için uygulamaya dön ve STOP'a bas", permission: 'Konum izni gerekli. Ayarlar açılsın mı?' }, noTrack: 'İz, BAŞLAT\'a basınca burada çizilir', noGps: 'Cihazınızda GPS desteği bulunamadı!', none: 'Henüz kayıt yok. BAŞLAT ile bir kayıt yapıp STOP\'a bas.', del: 'Sil', recs: 'KAYITLAR', tracking: 'RECORDING', paused: 'PAUSED', stopped: 'STOPPED' },
+  en: { live: '📍 LIVE', goal: '🎯 GOAL', stats: '📊 STATS', map: '🗺️ MAP', speed: 'SPEED', dist: 'DIST', time: 'TIME', alt: 'ALT', avg: 'AVG', temp: 'TEMP', hold: 'HOLD', max: 'MAX', compass: 'COMPASS', here: 'Your location', state: 'STATE', start: '▶ START', pause: '⏸ PAUSE', resume: '▶ RESUME', stop: '⏹ STOP', lock: '🔒 LOCK', soon: 'Coming soon', offline: 'NO INTERNET: RECORDER MODE', viewMap: 'MAP', viewTrail: 'VECTOR', offlineSub: 'Map is off, drawing your trail and recording', toStart: 'TO START', toTarget: 'TO TARGET', backOn: '↩ GO BACK', backOff: '✕ STOP GOING BACK', backLeft: 'ALONG TRAIL', offTrail: 'OFF TRAIL', dir: 'BEARING', arrived: '🏁 YOU ARE AT THE START', bg: { title: 'TrackG is recording', message: 'Open the app and press STOP to finish', permission: 'Location permission is required. Open settings?' }, noTrack: 'Your trail appears here after START', noGps: 'GPS is not supported on this device!', none: 'No recordings yet. Press START, then STOP to save one.', del: 'Delete', recs: 'RECORDINGS', tracking: 'RECORDING', paused: 'PAUSED', stopped: 'STOPPED' },
 };
 
 function load(key, fallback) {
@@ -27,14 +27,18 @@ function save(key, value) {
 // Ortalama hız (km/h) = toplam km / toplam saat
 const avgSpeed = (km, sec) => (sec > 0 ? km / (sec / 3600) : 0);
 
-// Vektör görünümü: siyah zemin üzerinde yürünen izi çizer (kuzey hep yukarı)
-function OfflineTrack({ path, position, target, t }) {
+const fmtM = (m) => (m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`);
+
+// Vektör görünümü: siyah zemin üzerinde yürünen izi çizer (kuzey hep yukarı).
+// back: "GERİ DÖN" açıldığı andaki iz kopyası; kendi izini tersten takip ettirir.
+function OfflineTrack({ path, position, target, back, t }) {
   const k = Math.cos((position[0] * Math.PI) / 180);
   // Metre cinsinden düz koordinat: x = doğu, y = kuzey (şu anki konum merkez)
   const toXY = (p) => [(p[1] - position[1]) * 111320 * k, (p[0] - position[0]) * 110540];
   const pts = path.map(toXY);
+  const bpts = back ? back.map(toXY) : null;
   const dest = target ? toXY([target.lat, target.lon]) : null;
-  const all = [...pts, [0, 0], ...(dest ? [dest] : [])];
+  const all = [...pts, ...(bpts || []), [0, 0], ...(dest ? [dest] : [])];
   const xs = all.map((a) => a[0]);
   const ys = all.map((a) => a[1]);
   const minX = Math.min(...xs), maxX = Math.max(...xs);
@@ -44,21 +48,40 @@ function OfflineTrack({ path, position, target, t }) {
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
   const sx = (x) => W / 2 + (x - cx) * scale;
   const sy = (y) => W / 2 - (y - cy) * scale;
+  const line = (arr) => arr.map((a) => `${sx(a[0])},${sy(a[1])}`).join(' ');
 
   const steps = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
   const bar = [...steps].reverse().find((n) => n <= span / 2.5) || 10;
   const start = pts[0];
-  const goal = dest || start; // kesikli çizgi hedefe (yoksa başlangıca) gider
-  const goalM = goal ? Math.round(Math.hypot(goal[0], goal[1])) : null;
+
+  // GERİ DÖN: izin en yakın noktasını bul, oradan başlangıca kadar tersten yürüt
+  let nav = null;
+  if (bpts && bpts.length > 1) {
+    const d = bpts.map((a) => Math.hypot(a[0], a[1]));
+    let ni = 0;
+    d.forEach((v, i) => { if (v < d[ni]) ni = i; });
+    let wi = ni;
+    while (wi > 0 && d[wi] < 15) wi--; // titremesin diye en az 15 m ilerideki iz noktası hedef
+    let remain = d[ni];
+    for (let i = ni; i > 0; i--) remain += Math.hypot(bpts[i][0] - bpts[i - 1][0], bpts[i][1] - bpts[i - 1][1]);
+    const wp = bpts[wi];
+    nav = { ni, wp, off: d[ni], remain, bearing: ((Math.atan2(wp[0], wp[1]) * 180) / Math.PI + 360) % 360, arrived: remain < 15 };
+  }
+  const goal = nav ? null : dest || start; // kesikli çizgi hedefe (yoksa başlangıca) gider
+  const goalM = goal ? Math.hypot(goal[0], goal[1]) : null;
 
   return (
     <>
       <svg className="track-svg" viewBox={`0 0 ${W} ${W}`} preserveAspectRatio="xMidYMid meet">
+        {nav && nav.ni > 0 && (
+          <polyline fill="none" stroke="#fb923c" strokeWidth="8" strokeOpacity="0.85" strokeLinejoin="round" strokeLinecap="round"
+            points={line(bpts.slice(0, nav.ni + 1))} />
+        )}
         {pts.length > 1 && (
-          <polyline fill="none" stroke="#00ff66" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round"
-            points={pts.map((a) => `${sx(a[0])},${sy(a[1])}`).join(' ')} />
+          <polyline fill="none" stroke="#00ff66" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" points={line(pts)} />
         )}
         {goal && <line x1={sx(0)} y1={sy(0)} x2={sx(goal[0])} y2={sy(goal[1])} stroke="#fb923c" strokeWidth="1.5" strokeDasharray="4 4" />}
+        {nav && !nav.arrived && <line x1={sx(0)} y1={sy(0)} x2={sx(nav.wp[0])} y2={sy(nav.wp[1])} stroke="#fff" strokeWidth="2" strokeDasharray="5 4" />}
         {start && <rect x={sx(start[0]) - 5} y={sy(start[1]) - 5} width="10" height="10" fill="#fff" />}
         {dest && <path d={`M${sx(dest[0])} ${sy(dest[1]) - 9} l9 9 l-9 9 l-9 -9 z`} fill="#fb923c" stroke="#fff" strokeWidth="2" />}
         <circle cx={sx(0)} cy={sy(0)} r="8" fill="#00ff66" stroke="#fff" strokeWidth="2" />
@@ -68,8 +91,18 @@ function OfflineTrack({ path, position, target, t }) {
         <text x="16" y={W - 22} fill="#8b95a5" fontSize="11">{bar >= 1000 ? `${bar / 1000} km` : `${bar} m`}</text>
       </svg>
       <div className="track-info">
-        {goal ? (
-          <span>{dest ? t.toTarget : t.toStart}<b>{goalM >= 1000 ? `${(goalM / 1000).toFixed(2)} km` : `${goalM} m`}</b></span>
+        {nav ? (
+          nav.arrived ? (
+            <span className="arrived">{t.arrived}</span>
+          ) : (
+            <>
+              <span>{t.backLeft}<b>{fmtM(nav.remain)}</b></span>
+              <span>{t.offTrail}<b className={nav.off > 30 ? 'warn' : ''}>{fmtM(nav.off)}</b></span>
+              <span>{t.dir}<b>{Math.round(nav.bearing)}° {toCardinal(nav.bearing)}</b></span>
+            </>
+          )
+        ) : goal ? (
+          <span>{dest ? t.toTarget : t.toStart}<b>{fmtM(goalM)}</b></span>
         ) : (
           <span>{t.noTrack}</span>
         )}
@@ -133,6 +166,7 @@ export default function App() {
   const [temp, setTemp] = useState(null);
   const [target, setTargetState] = useState(() => load('trackg-target', null));
   const [goalKm, setGoalKmState] = useState(() => load('trackg-goalkm', null));
+  const [backPath, setBackPath] = useState(null); // GERİ DÖN açıkken: o anki izin kopyası
   const setTarget = (v) => { setTargetState(v); save('trackg-target', v); };
   const setGoalKm = (v) => { setGoalKmState(v); save('trackg-goalkm', v); };
 
@@ -272,6 +306,7 @@ export default function App() {
 
     // Yeni takip: eski rotayı ve sayaçları temizle
     setPath([]);
+    setBackPath(null);
     setDistance(0);
     setSeconds(0);
     setSpeed(0);
@@ -425,8 +460,13 @@ export default function App() {
                 <div className="offline-sub">{t.offlineSub}</div>
               </>
             )}
-            <OfflineTrack path={path} position={position} target={target} t={t} />
+            <OfflineTrack path={path} position={position} target={target} back={backPath} t={t} />
           </div>
+        )}
+        {tab === 'live' && view === 'trail' && (path.length >= 2 || backPath) && (
+          <button className={`back-chip ${backPath ? 'on' : ''}`} onClick={() => setBackPath(backPath ? null : [...path])}>
+            {backPath ? t.backOff : t.backOn}
+          </button>
         )}
         {tab === 'live' && (
           <div className="compass-badge">
